@@ -1,35 +1,29 @@
 import smtplib
-from email.mime.text import MIMEText
 import sqlite3
 
 class Alert:
-    def __init__(self, time, src_ip, dst_ip, message, attack):
+    def __init__(self, time, src_ip, dst_ip, message, attack,method):
         self.time = time
         self.src_ip = src_ip
         self.dst_ip = dst_ip
         self.message = message
         self.attack = attack
+        self.method = method
     
     def add_to_alert_table(self, conn):
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO alerts 
-            (
-                timestamp,  
-                src_ip,
-                dst_ip,
-                message,
-                attack
-            )
-            VALUES (?, ?, ?, ?, ?)  
+            INSERT INTO alerts(timestamp,src_ip,dst_ip,message,attack,method)
+            VALUES (?, ?, ?, ?, ?, ?)  
             """,
             (
                 self.time,  
                 self.src_ip, 
                 self.dst_ip, 
                 self.message,
-                self.attack
+                self.attack,
+                self.method
             )
         )
         conn.commit()
@@ -51,7 +45,8 @@ class Alert:
                 src_ip = row[2],
                 dst_ip = row[3],
                 message = row[4],
-                attack = row[5]
+                attack = row[5],
+                method = row[6]
             )
             
             alerts.append(alert)

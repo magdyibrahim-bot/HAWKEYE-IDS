@@ -1,5 +1,12 @@
+#page-content {
+    flex: 1;
+}
+
 body {
-    background-color: #f8f9fa;
+    background-color:rgb(255, 255, 255);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
 .card {
@@ -30,6 +37,10 @@ body {
 
 #alerts-table th:hover {
     background-color: #e9ecef;
+}
+
+.text-center{
+    color: rgb(0, 0, 0);
 }
 
 .icon_img{
@@ -105,4 +116,14 @@ body {
     color: #d90429; /* Red for a bold bullseye */
     position: relative;
     animation: hitEffect 1.5s infinite ease-in-out;
+}
+
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1); }
 }

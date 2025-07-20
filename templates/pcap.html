@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div id="page-content">
+
+    <!-- PCAP Upload Section -->
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fa-solid fa-network-wired me-2"></i>Upload PCAP File for Signature Scan
+                    </h5>
+                    <form method="POST" enctype="multipart/form-data" id="pcap-form">
+                        <div class="mb-3">
+                            <input type="file" class="form-control" name="pcap_file" accept=".pcap" required onchange="updatePCAPFileName(this)">
+                            <small id="pcapHelp" class="form-text text-muted mt-1">Only .pcap files are supported.</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">📡 Upload & Scan</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="alert alert-info mt-4">
+            <ul class="mb-0">
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Alerts Display -->
+    {% if alerts %}
+    <div class="row mt-4">
+        <div class="col">
+            <div class="card border-danger">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fa-solid fa-bell me-2"></i>Detected Alerts</h5>
+                    <ul class="list-group">
+                        {% for alert in alerts %}
+                        <li class="list-group-item list-group-item-danger">
+                            <div>
+                                <i class="fa-solid fa-skull-crossbones me-2"></i>
+                                <strong>{{ alert.layer }}</strong> - {{ alert.message }}
+                            </div>
+                            <small class="text-muted">
+                                {{ alert.time }} |
+                                <span class="text-success">Src:</span> {{ alert.src_ip }} →
+                                <span class="text-danger">Dst:</span> {{ alert.dst_ip }} |
+                                <span class="text-warning">Method:</span> {{ alert.method }}
+                            </small>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+    function updatePCAPFileName(input) {
+        if (input.files.length > 0) {
+            const fileName = input.files[0].name;
+            document.getElementById('pcapHelp').textContent = "Selected file: " + fileName;
+        }
+    }
+
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function(event) {
+            event.preventDefault();
+            const href = this.href;
+            const pageContent = document.getElementById('page-content');
+            if (pageContent) pageContent.classList.add('fade-out');
+            document.body.classList.add('fade-out');
+            setTimeout(() => {
+                window.location.href = href;
+            }, 500);
+        });
+    });
+</script>
+{% endblock %}

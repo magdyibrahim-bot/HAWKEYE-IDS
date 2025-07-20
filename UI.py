@@ -1,212 +1,294 @@
-from concurrent.futures import ThreadPoolExecutor
-from flask import Flask, render_template
+import threading
+import joblib
+import numpy as np
+import pandas as pd
+import os
+
 from scapy.all import rdpcap
 
-####################################################################################################################
+from flask import Flask, render_template, request, redirect, flash
 
-import sqlite3
-import threading
-
-####################################################################################################################
-
+from DB import Database
+from rule import Rule
 from log import Log
 from alert import Alert
-from match_rule import match_rule
-from packet import Packet
-from rule import Rule
-from DB import clear_table
-
-####################################################################################################################
+from signature_IDS import SignatureIDS
+from alert_analyzer import AlertAnalyzer
+from anomaly_IDS import AnomalyIDS
 
 IDS_app = Flask(__name__)
-packets = rdpcap("PCAP/arpspoof.pcap")
+IDS_app.secret_key = 'super-secret'
 
-####################################################################################################################
+UPLOAD_FOLDER = 'uploads'
 
-def establish_connection():
-    try:
-        conn = sqlite3.connect('DB/IDS.db', check_same_thread=False, timeout=10)
-        conn.row_factory = sqlite3.Row
-        conn.execute('PRAGMA journal_mode=WAL;')  
-        return conn
-    
-    except sqlite3.Error as e:
-        print(f"[Database Error] {e}")
-        return None
+os.makedirs(
+    UPLOAD_FOLDER, 
+    exist_ok=True
+)
 
-####################################################################################################################
+# ========== Load model components ========== #
+model = joblib.load(
+    "Models/Models/tst1_stk_classifier.joblib"
+)
+iso_forest = joblib.load(
+    "Models/Models/isolation_forest.joblib"
+)
+scaler = joblib.load(
+    "Models/Scaler/scaler_minmax.save"
+)
+label_encoder = joblib.load(
+    "Models/Label Encoder/lb_encoder.pkl"
+)
+feature_order = joblib.load(
+    "Models/Features_Order/features_order.pkl"
+)
 
-def close_connection(conn):
-    if conn:
-        conn.close()
-        
-#####################################################################################################################
-
-def update_Top_src_ip(alerts):
-    src_ip_count = {}
-    
-    for alert in alerts:
-        
-        if alert.src_ip in src_ip_count:
-            src_ip_count[alert.src_ip] += 1
-            
-        else:
-            src_ip_count[alert.src_ip] = 1
-    
-    for ip, count in src_ip_count.items(): 
-        
-        top_ip = 'N/A'
-        top = 1
-        
-        if count > top:
-            
-            top = count
-            top_ip = ip
-            
-    return top_ip
-
-#####################################################################################################################
-
-def update_Top_dst_ip(alerts):
-    dst_ip_count = {}
-    
-    for alert in alerts:
-        
-        if alert.dst_ip in dst_ip_count:
-            dst_ip_count[alert.dst_ip] += 1
-            
-        else:
-            dst_ip_count[alert.dst_ip] = 1
-    
-    for ip, count in dst_ip_count.items(): 
-        
-        top_ip = 'N/A'
-        top = 1
-        
-        if count > top:
-            
-            top = count
-            top_ip = ip
-            
-    return top_ip
-    
-
-#####################################################################################################################
-
-def process_packet(pkt, rules):
-    
-    try:
-        conn = establish_connection()
-        
-        if not conn:
-        
-            print("[Error] Failed to establish database connection.")
-            
-            return
-
-        packet = Packet(pkt)
-
-        for rule in rules:
-        
-            rule_1 = Rule(rule)
-        
-            if match_rule(packet, rule_1):
-        
-                time = packet.get_packet_time()
-                src_ip = packet.get_src_ip()
-                dst_ip = packet.get_dst_ip()
-                
-                action = rule_1.action
-                message = rule_1.options.get("msg", "No message specified")
-                layer = rule_1.options.get("attack", "No message specified")
-
-                log = Log(time, action, src_ip, dst_ip, message, layer)
-                alert = Alert(time, src_ip, dst_ip, message, layer)
-                
-                log.add_to_log_table(conn)
-                alert.add_to_alert_table(conn)
-                
-
-    except Exception as e:
-        
-        print(f"[Error] Error processing packet: {e}")
-
-    finally:
-        
-        close_connection(conn)
-
-####################################################################################################################
-
-def core(packets, rules):
-    
-    with ThreadPoolExecutor(max_workers=5) as executor:  
-        
-        futures = [executor.submit(process_packet, pkt, rules) for pkt in packets]
-
-        for future in futures:
-            
-            future.result()  
-
-####################################################################################################################
+# ========== Global Rule Cache ========== #
+rules = []
 
 @IDS_app.route("/")
-def UI():
-    conn = establish_connection()
+def signature_dashboard():
+    top_src_ip = 'N/A'
+    top_dst_ip = 'N/A'
     
-    if not conn:
-        return "Failed to connect to the database.", 500
+    alerts = []
+    logs = []
+    num_alerts = 0
+    loaded_rules = []
 
     try:
-        rules = Rule.get_rules_from_db(conn)
+        db = Database("DB/IDS.db")
+        conn = db.connect()
+
+        logs = [
+            log for log in Log.get_logs_from_db(conn) 
+            if log.method == "signature"
+        ]
+
+        alerts = [
+            alert for alert in Alert.get_alerts_from_db(conn) 
+            if alert.method == "signature"
+        ]
+
+        loaded_rules = Rule.get_rules_from_db(conn)
+
+        num_alerts = len(alerts)
+
+        analyzer = AlertAnalyzer(alerts)
+        top_src_ip = analyzer.get_top_src_ip()
+        top_dst_ip = analyzer.get_top_dst_ip()
+
+        conn.close()
         
-        logs = Log.get_logs_from_db(conn)
+    except Exception as e:
+        print(f"[Error] {e}")
+        return "Dashboard error", 500
+
+    return render_template(
+        "index.html",
+        title="Signature IDS Dashboard",
+        logs=logs,
+        alerts=alerts,
+        rules=loaded_rules,      
+        num_alerts=num_alerts,
+        top_src_ip=top_src_ip, 
+        top_dst_ip=top_dst_ip
+    )
+
+
+
+@IDS_app.route("/anomaly")
+def anomaly_dashboard():
+    top_src_ip = 'N/A'
+    top_dst_ip = 'N/A'
+    
+    alerts = []
+    logs = []
+    
+    num_alerts = 0
+
+    try:
+        db = Database("DB/IDS.db")
+        conn = db.connect()
         
-        alerts = Alert.get_alerts_from_db(conn)
+        logs = [
+            log for log in Log.get_logs_from_db(conn) 
+            if log.method == "anomaly"
+        ]
+        
+        alerts = [
+            alert for alert in Alert.get_alerts_from_db(conn) 
+            if alert.method == "anomaly"
+        ]
         
         num_alerts = len(alerts)
-        
-        top_src_ip = update_Top_src_ip(alerts)
-        
-        top_dst_ip = update_Top_dst_ip(alerts)
-        
+
+        analyzer = AlertAnalyzer(alerts)
+        top_src_ip = analyzer.get_top_src_ip()
+        top_dst_ip = analyzer.get_top_dst_ip()
+
+        conn.close()
     
     except Exception as e:
-     
-        print(f"[Error] Error fetching data for dashboard: {e}")
-        
-        return "An error occurred while loading the dashboard.", 500
-    
-    finally:
-    
-        close_connection(conn)
+        print(f"[Error] {e}")
+        return "Anomaly dashboard error", 500
 
-    return render_template('index.html', title="Dashboard",logs=logs, rules=rules, alerts=alerts, num_alerts=num_alerts, top_src_ip=top_src_ip, top_dst_ip=top_dst_ip)
+    return render_template(
+        "anomaly.html", 
+        title="Anomaly IDS Dashboard",                   
+        logs=logs, 
+        alerts=alerts, 
+        num_alerts=num_alerts,
+        top_src_ip=top_src_ip, 
+        top_dst_ip=top_dst_ip
+    )
 
-#####################################################################################################################
 
-if __name__ == "__main__":
-    
-    try:
+@IDS_app.route("/csv", methods=["GET", "POST"])
+def upload_csv():
+    predictions = []
+    stats = {}
+
+    if request.method == "POST":
+        file = request.files.get("csv_file")
         
-        conn = establish_connection()
-        
-        if not conn:
-            print("[Error] Failed to connect to the database.")
+        if not file or file.filename == "":
+            flash("Please upload a valid CSV file")
+            return redirect(request.url)
+
+        try:
+            df = pd.read_csv(file)
+            path = os.path.join("Uploads", "temp_uploaded.csv")
+            df.to_csv(path, index=False)
+
+            anomaly_ids = AnomalyIDS(
+                model,
+                iso_forest, 
+                scaler, 
+                label_encoder, 
+                feature_order
+            )
             
-            exit(1)
+            predictions, stats = anomaly_ids.predict_from_csv(path)
+
+        except Exception as e:
+            print(f"[CSV Error] {e}")
+            flash("An error occurred while processing the file.")
+            return redirect(request.url)
+
+    return render_template(
+        "csv.html", 
+        predictions=predictions, 
+        stats=stats,
+        title="CSV Anomaly Detection"
+    )
+
+
+@IDS_app.route("/upload_pcap", methods=["GET", "POST"])
+def upload_pcap():
+    alerts = []
+
+    if request.method == "POST":
+        file = request.files.get("pcap_file")
+        
+        if not file or file.filename == "":
+            flash("Please upload a PCAP file")
+            return redirect(request.url)
+
+        filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+        file.save(filepath)
+
+        try:
+            
+            packets = rdpcap(filepath)
+            
+            sig_ids = SignatureIDS(rules)
+            alerts = sig_ids.predict_from_pcap(packets)
+
+            flash("PCAP scanned successfully.")
+        
+        except Exception as e:
+            print(f"[PCAP Error] {type(e).__name__}: {e}")
+            flash("Failed to process PCAP.")
+
+    return render_template(
+        "pcap.html", 
+        alerts=alerts, 
+        title="PCAP Signature Detection"
+    )
+
+
+@IDS_app.route("/rules")
+def rules_dashboard():
+    rules = []
+
+    try:
+        db = Database("DB/IDS.db")
+        conn = db.connect()
+
+        if not conn:
+            print("[Error] DB Connection Failed.")
+            return "Database connection error", 500
 
         rules = Rule.get_rules_from_db(conn)
-        
-        clear_table("logs",conn)
-        
-        clear_table("alerts",conn)
-        
-        close_connection(conn)
-        
-        threading.Thread(target=lambda: core(packets, rules), daemon=True).start()
-
-        IDS_app.run(debug=True, port=9000)
+        conn.close()
 
     except Exception as e:
-        
-        print(f"[Critical Error] {e}")
+        print(f"[Error] {e}")
+        return "Rules dashboard error", 500
+
+    return render_template(
+        "rules.html", 
+        title="Rules Dashboard", 
+        rules=rules
+    )
+
+
+# ========== Main ========== #
+if __name__ == "__main__":
+    try:
+        db = Database("DB/IDS.db")
+        conn = db.connect()
+
+        if not conn:
+            print("[Error] DB Connection Failed.")
+            exit(1)
+
+        # Load rules
+        rules = Rule.get_rules_from_db(conn)
+
+        # Clear old alerts/logs
+        db.clear_table("logs")
+        db.clear_table("alerts")
+        conn.close()
+
+        # Read test pcap
+        packets = rdpcap("test/test3.pcap")
+
+        # Start Signature IDS
+        threading.Thread(
+            target=lambda: 
+            SignatureIDS(rules).detect(packets),
+            daemon=True
+        ).start()
+
+        # Start Anomaly IDS
+        threading.Thread(
+            target=lambda: 
+            AnomalyIDS(
+                model, 
+                iso_forest, 
+                scaler, 
+                label_encoder, 
+                feature_order
+            ).detect(packets),
+            daemon=True
+            ).start()
+
+        IDS_app.run(
+            debug=True,
+            port=8000
+        )
+
+    except Exception as e:
+        print(f"[Startup Error] {e}")

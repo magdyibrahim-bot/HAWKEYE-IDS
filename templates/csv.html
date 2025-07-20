@@ -1,0 +1,117 @@
+{% extends 'base.html'%}
+
+{% block content %}
+<div id="page-content"> 
+    <div class="row">   
+        <div class="col">            
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fa-solid fa-file-zipper" style="padding-right: 5px;"></i>Upload CSV File for Batch Prediction</h5>
+                    <form method="POST" enctype="multipart/form-data" id="csv-form">
+                        <div class="mb-3">
+                            <input type="file" class="form-control" name="csv_file" accept=".csv" required onchange="updateFileName(this)">
+                            <small id="fileHelp" class="form-text text-muted mt-1">Only .csv files with correct feature order are supported.</small>
+                        </div>
+                        <button type="submit" class="btn btn-success">📤 Upload & Predict</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash Message Area -->
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="alert alert-danger mt-4">
+            <ul class="mb-0">
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fa-solid fa-file-zipper" style="padding-right: 5px;"></i>Prediction</h5>
+                    <div id="logs" class="logs-container">
+                        {% if predictions %}
+                            <div class="mt-4">
+                                <ul class="list-group">
+                                    {% for p in predictions %}
+                                        <li class="list-group-item {% if p == 'BENIGN' %}list-group-item-success{% else %}list-group-item-danger{% endif %}">
+                                            {% if p == 'BENIGN' %}
+                                                <i class="fa-solid fa-check"></i>
+                                                {{ p }}
+                                            {% else %}
+                                                <i class="fa-solid fa-skull-crossbones"></i>
+                                                {{ p }}
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if stats %}
+    <div class="row mt-4">
+        <div class="col">
+            <div class="card border-info">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-chart-pie me-2"></i>Prediction Statistics</h5>
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fa-solid fa-check text-success me-2"></i>BENIGN</span>
+                            <span class="badge bg-success rounded-pill">{{ stats["BENIGN"] }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fa-solid fa-skull-crossbones text-danger me-2"></i>KNOWN ATTACK</span>
+                            <span class="badge bg-danger rounded-pill">{{ stats["ATTACK"] }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><i class="fa-solid fa-question text-warning me-2"></i>UNKNOWN</span>
+                            <span class="badge bg-warning text-dark rounded-pill">{{ stats["UNKNOWN"] }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+
+</div>
+
+<script>
+    function updateFileName(input) {
+        if (input.files.length > 0) {
+            const fileName = input.files[0].name;
+            document.getElementById('fileHelp').textContent = "Selected file: " + fileName;
+        }
+    }
+
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function(event) {
+            event.preventDefault();
+            const href = this.href;
+
+            const pageContent = document.getElementById('page-content');
+            if (pageContent) pageContent.classList.add('fade-out');
+
+            document.body.classList.add('fade-out');
+
+            setTimeout(() => {
+                window.location.href = href;
+            }, 500);
+        });
+    });
+</script>
+{% endblock %}

@@ -1,5 +1,8 @@
+import numpy as np
+from collections import defaultdict
 from scapy.all import TCP,UDP,ICMP,Ether,IP,ARP,Raw
 from datetime import datetime
+
 
 class Packet:
     src_ip_count = {}
@@ -18,19 +21,23 @@ class Packet:
         self.data_size = self.get_pkt_size()
         self.payload = self.extract_payload()
         self.time = self.get_packet_time()
+        self.time_formatted = self.get_packet_time_formatted()
         self.src_ip_count = self.update_src_ip_count()
         self.dst_ip_count = self.update_dst_ip_count()
     
     def get_itype(self):
-        return self.scapy_packet[ICMP].type
+         return self.scapy_packet[ICMP].type if ICMP in self.scapy_packet else None
     
-    def get_packet_time(self):
+    def get_packet_time_formatted(self):
         pkt = self.scapy_packet
         packet_time = float(pkt.time)
         
         formatted_time = datetime.fromtimestamp(packet_time).strftime("%Y-%m-%d %H:%M:%S")
         
         return formatted_time
+    
+    def get_packet_time(self):
+        return float(self.scapy_packet.time)  
     
     def update_src_ip_count(self):
         
@@ -74,11 +81,11 @@ class Packet:
         
         pkt = self.scapy_packet
         
-        if pkt.haslayer(IP):
-            return pkt[IP].src
+        if pkt.haslayer(IP):#network
+            return pkt[IP].src#srcip
         
-        elif pkt.haslayer(ARP):
-            return pkt[ARP].psrc
+        elif pkt.haslayer(ARP):#data
+            return pkt[ARP].psrc#srcip
         
         else:
             return "N/A"
@@ -127,22 +134,30 @@ class Packet:
 
         if pkt.haslayer(TCP):
             tcp_flags = pkt[TCP].flags
+            
             flags = []
 
             if tcp_flags & 0x02:  # SYN
                 flags.append("S")
+                
             if tcp_flags & 0x10:  # ACK
                 flags.append("A")
+                
             if tcp_flags & 0x01:  # FIN
                 flags.append("F")
+                
             if tcp_flags & 0x08:  # PSH
                 flags.append("P")
+                
             if tcp_flags & 0x04:  # RST
                 flags.append("R")
+                
             if tcp_flags & 0x20:  # URG
                 flags.append("U")
+                
             if tcp_flags & 0x40:  # ECE
                 flags.append("E")
+                
             if tcp_flags & 0x80:  # CWR
                 flags.append("C")
 
@@ -154,6 +169,7 @@ class Packet:
 
             if ip_flags & 0x02:  # DF (Don't Fragment)
                 flags.append("DF")
+                
             if ip_flags & 0x01:  # MF (More Fragments)
                 flags.append("MF")
 
@@ -162,12 +178,42 @@ class Packet:
         else:
             return "N/A"
 
-
-    def get_pkt_size(self):
+    def get_header_length(self):
+        if self.scapy_packet.haslayer('TCP'):
+            tcp_layer = self.scapy_packet.getlayer('TCP')
+            return tcp_layer.dataofs * 4
         
+        elif self.scapy_packet.haslayer('UDP'):
+            return 8
+        
+        elif self.scapy_packet.haslayer('IP'):
+            ip_layer = self.scapy_packet.getlayer('IP')
+            return ip_layer.ihl * 4
+        
+        return 0
+    
+    def get_window_size(self):
+        if self.scapy_packet.haslayer('TCP'):
+            tcp_layer = self.scapy_packet.getlayer('TCP')
+            return tcp_layer.window
+        return 0
+    
+    def get_pkt_size(self):
         pkt = self.scapy_packet
         return len(pkt)
-
+        
+    def get_payload_length(self):
+        # Assuming you want the length of the TCP/UDP payload, not including headers
+        if self.scapy_packet.haslayer('TCP'):
+            tcp_layer = self.scapy_packet['TCP']
+            return len(tcp_layer.payload)
+        elif self.scapy_packet.haslayer('UDP'):
+            udp_layer = self.scapy_packet['UDP']
+            return len(udp_layer.payload)
+        else:
+            # fallback: maybe no TCP/UDP layer, return 0 or total length minus headers
+            return 0
+    
     def extract_payload(self):
         pkt = self.scapy_packet
         
@@ -184,12 +230,15 @@ class Packet:
         else:
             return ""
         
+    @staticmethod   
     def get_src_counts():
         return Packet.src_ip_count
     
+    @staticmethod
     def get_dst_counts():
         return Packet.dst_ip_count
     
+
     def __str__(self):
         
         packet_info = {
@@ -219,3 +268,4 @@ class Packet:
         }
         
         return packet_info.get(key, "Key not found")  
+    
