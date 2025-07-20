@@ -54,7 +54,7 @@ HAWKEYE_IDS/
 - git clone https://github.com/magdyibrahim-bot/IDS_GradProjecet_CairoUni.git
 - cd IDS_GradProjecet_CairoUni
 - pip install -r requirements.txt
-- python app.py
+- python UI.py
 
 Then open your browser at http://127.0.0.1:5000/
 ---
@@ -88,9 +88,9 @@ Then open your browser at http://127.0.0.1:5000/
 ---
 
 ## 📬 Contact
-- 📧 Email: magdyibrahim.bot@gmail.com
+- 📧 Email: magibra490@gmail.com
 
-- 🌐 LinkedIn: Your LinkedIn
+- 🌐 LinkedIn: Your [LinkedIn](https://www.linkedin.com/in/magdy-ibrahim-bb743b220/)
 
 - 📁 Portfolio: [Coming Soon...]
   ---
