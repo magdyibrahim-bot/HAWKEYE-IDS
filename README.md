@@ -5,7 +5,7 @@
 
 ## 📌 Overview
 
-**HAWKEYE IDS** is a hybrid Intrusion Detection System that combines both anomaly-based and signature-based detection techniques to effectively identify and prevent known and unknown cyber threats in real-time network traffic.
+**HAWKEYE IDS** is an Intrusion Detection System that combines both anomaly-based and signature-based detection techniques to effectively identify and prevent known and unknown cyber threats in real-time network traffic.
 
 This system was developed as our final year graduation project, and it aims to offer high accuracy, fast detection, and an interactive interface for real-time monitoring.
 
@@ -13,9 +13,9 @@ This system was developed as our final year graduation project, and it aims to o
 
 ## 🚀 Features
 
-- ✅ Hybrid detection engine (Anomaly + Signature based)
+- ✅ Signature or Anomaly detection engine
 - 🔍 Detects known attacks using signature rules
-- 🤖 Detects unknown attacks using machine learning (Isolation Forest + DNN + Z-Score)
+- 🤖 Detects unknown attacks using machine learning (Isolation Forest + Ensemble learning)
 - 📈 Real-time packet feature extraction using Scapy
 - 📊 Dashboard built with Flask for live alerts and log visualization
 - 🧠 Trained on CIC-IDS-2017 dataset
@@ -40,13 +40,13 @@ This system was developed as our final year graduation project, and it aims to o
 
 ```bash
 HAWKEYE_IDS/
-├── models/                  # Pre-trained ML models (DNN, Isolation Forest)
+├── models/                 # Pre-trained ML models (DNN, Isolation Forest)
 ├── signature_db/           # SQLite DB containing rules
 ├── utils/                  # Feature extraction and packet parser
 ├── dashboard/              # Flask-based web interface
 ├── static/                 # Bootstrap, JS, CSS
 ├── templates/              # HTML templates
-├── app.py                  # Main Flask app
+├── UI.py                  # Main Flask app
 ├── README.md               # This file
 ```
 
@@ -59,3 +59,38 @@ HAWKEYE_IDS/
 Then open your browser at http://127.0.0.1:5000/
 ---
 
+## 🧪 How It Works
+
+- Anomaly Engine: Trained on clean traffic + known attacks using hybrid model (Isolation Forest + Ensembel Learning). Detects abnormal behavior.
+
+- Signature Engine: Matches traffic against predefined malicious patterns stored in a local database.
+
+- Real-time Packet Parser: Extracts features from network packets using scapy.
+---
+
+
+## 🎯 Goals
+
+- Detect zero-day attacks
+
+- Reduce false positives
+
+- Provide an easy-to-use dashboard
+
+- Enhance real-time performance
+
+---
+
+## 📄 License
+
+- This project is for academic use. Feel free to fork and build on it, giving credit where it's due.
+
+---
+
+## 📬 Contact
+- 📧 Email: magdyibrahim.bot@gmail.com
+
+- 🌐 LinkedIn: Your LinkedIn
+
+- 📁 Portfolio: [Coming Soon...]
+  ---
