@@ -51,10 +51,10 @@ HAWKEYE_IDS/
 ```
 
 ## 🔧 Installation
-git clone https://github.com/magdyibrahim-bot/IDS_GradProjecet_CairoUni.git
-cd IDS_GradProjecet_CairoUni
-pip install -r requirements.txt
-python app.py
+- git clone https://github.com/magdyibrahim-bot/IDS_GradProjecet_CairoUni.git
+- cd IDS_GradProjecet_CairoUni
+- pip install -r requirements.txt
+- python app.py
 
 Then open your browser at http://127.0.0.1:5000/
 ---
