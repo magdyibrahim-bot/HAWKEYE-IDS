@@ -92,5 +92,5 @@ Then open your browser at http://127.0.0.1:5000/
 
 - 🌐 LinkedIn: Your [LinkedIn](https://www.linkedin.com/in/magdy-ibrahim-bb743b220/)
 
-- 📁 Portfolio: [Coming Soon...]
-  ---
+- 📁 Portfolio: [Protofolio](https://magdyibrahim-bot.github.io/Protofolio)
+---
