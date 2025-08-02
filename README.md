@@ -40,13 +40,13 @@ This system was developed as our final year graduation project, and it aims to o
 
 ```bash
 HAWKEYE_IDS/
-├── models/                 # Pre-trained ML models (DNN, Isolation Forest)
+├── models/                 # Pre-trained ML models (ensemble learning, Isolation Forest)
 ├── signature_db/           # SQLite DB containing rules
 ├── utils/                  # Feature extraction and packet parser
 ├── dashboard/              # Flask-based web interface
 ├── static/                 # Bootstrap, JS, CSS
 ├── templates/              # HTML templates
-├── UI.py                  # Main Flask app
+├── UI.py                   # Main Flask app
 ├── README.md               # This file
 ```
 
@@ -94,3 +94,4 @@ Then open your browser at http://127.0.0.1:5000/
 
 - 📁 Portfolio: [Protofolio](https://magdyibrahim-bot.github.io/Protofolio)
 ---
+
